@@ -360,7 +360,7 @@
     "lockfile-lint": "^4.0.0",
     "loose-envify": "^1.4.0",
     "madge": "^5.0.1",
-    "mocha": "^7.2.0",
+    "mocha": "^9.2.2",
     "mockttp": "^2.6.0",
     "nock": "^9.0.14",
     "node-fetch": "^2.6.1",
