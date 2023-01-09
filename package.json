@@ -128,7 +128,7 @@
     "@metamask/slip44": "^2.1.0",
     "@metamask/smart-transactions-controller": "^2.3.2",
     "@metamask/snap-controllers": "^0.22.2",
-    "@metamask/snap-utils": "^0.22.2",
+    "@metamask/snap-utils": "^0.23.0",
     "@ngraveio/bc-ur": "^1.1.6",
     "@popperjs/core": "^2.4.0",
     "@reduxjs/toolkit": "^1.6.2",
@@ -395,7 +395,7 @@
     "vinyl-sourcemaps-apply": "^0.2.1",
     "watchify": "^4.0.0",
     "webextension-polyfill": "^0.8.0",
-    "webpack": "^4.41.6",
+    "webpack": "^5.0.0",
     "yargs": "^17.0.1",
     "yarn-deduplicate": "^3.1.0"
   },
