@@ -328,7 +328,7 @@
     "geckodriver": "^1.21.0",
     "gh-pages": "^3.2.3",
     "globby": "^11.0.4",
-    "gulp": "^4.0.2",
+    "gulp": "^5.0.0",
     "gulp-autoprefixer": "^5.0.0",
     "gulp-dart-sass": "^1.0.2",
     "gulp-livereload": "4.0.0",
