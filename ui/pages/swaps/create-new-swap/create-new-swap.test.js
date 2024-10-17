@@ -2,15 +2,15 @@ import React from 'react';
 import configureMockStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
 
+import { setBackgroundConnection } from '../../../store/background-connection';
 import {
   renderWithProvider,
   createSwapsMockStore,
   fireEvent,
-  setBackgroundConnection,
 } from '../../../../test/jest';
 import {
   setSwapsFromToken,
-  navigateBackToBuildQuote,
+  navigateBackToPrepareSwap,
 } from '../../../ducks/swaps/swaps';
 import CreateNewSwap from '.';
 
@@ -23,7 +23,7 @@ const createProps = (customProps = {}) => {
 };
 
 const backgroundConnection = {
-  navigateBackToBuildQuote: jest.fn(),
+  navigateBackToPrepareSwap: jest.fn(),
   setBackgroundSwapRouteState: jest.fn(),
   navigatedBackToBuildQuote: jest.fn(),
 };
@@ -35,18 +35,20 @@ jest.mock('../../../ducks/swaps/swaps', () => {
   return {
     ...actual,
     setSwapsFromToken: jest.fn(),
-    navigateBackToBuildQuote: jest.fn(),
+    navigateBackToPrepareSwap: jest.fn(),
   };
 });
 
 describe('CreateNewSwap', () => {
+  const props = createProps({ sensitiveTrackingProperties: {} });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('renders the component with initial props', () => {
     const store = configureMockStore()(createSwapsMockStore());
-    const props = createProps();
+
     const { getByText } = renderWithProvider(
       <CreateNewSwap {...props} />,
       store,
@@ -61,20 +63,20 @@ describe('CreateNewSwap', () => {
       };
     });
     setSwapsFromToken.mockImplementation(setSwapFromTokenMock);
-    const navigateBackToBuildQuoteMock = jest.fn(() => {
+    const navigateBackToPrepareSwapMock = jest.fn(() => {
       return {
         type: 'MOCK_ACTION',
       };
     });
-    navigateBackToBuildQuote.mockImplementation(navigateBackToBuildQuoteMock);
+    navigateBackToPrepareSwap.mockImplementation(navigateBackToPrepareSwapMock);
     const store = configureMockStore(middleware)(createSwapsMockStore());
-    const props = createProps();
+
     const { getByText } = renderWithProvider(
       <CreateNewSwap {...props} />,
       store,
     );
     await fireEvent.click(getByText('Create a new swap'));
     expect(setSwapFromTokenMock).toHaveBeenCalledTimes(1);
-    expect(navigateBackToBuildQuoteMock).toHaveBeenCalledTimes(1);
+    expect(navigateBackToPrepareSwapMock).toHaveBeenCalledTimes(1);
   });
 });

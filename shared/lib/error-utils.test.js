@@ -1,13 +1,38 @@
-import { fetchLocale } from '../../ui/helpers/utils/i18n-helper';
+import { fetchLocale } from '../modules/i18n';
 import { SUPPORT_LINK } from './ui-utils';
 import { getErrorHtml } from './error-utils';
 
-jest.mock('../../ui/helpers/utils/i18n-helper', () => ({
+jest.mock('../modules/i18n', () => ({
   fetchLocale: jest.fn(),
   loadRelativeTimeFormatLocaleData: jest.fn(),
 }));
+jest.mock('./deep-linking', () => ({
+  openCustomProtocol: jest.fn(),
+}));
+
+jest.mock('webextension-polyfill', () => {
+  return {
+    runtime: {
+      reload: jest.fn(),
+    },
+  };
+});
 
 describe('Error utils Tests', function () {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
+
+    global.platform = {
+      openTab: jest.fn(),
+    };
+  });
+
+  afterAll(() => {
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
+    delete global.platform;
+  });
   it('should get error html', async function () {
     const mockStore = {
       localeMessages: {
@@ -33,7 +58,11 @@ describe('Error utils Tests', function () {
     };
 
     fetchLocale.mockReturnValue(mockStore.localeMessages.current);
-    const errorHtml = await getErrorHtml(SUPPORT_LINK, mockStore.metamask);
+    const errorHtml = await getErrorHtml(
+      'troubleStarting',
+      SUPPORT_LINK,
+      mockStore.metamask,
+    );
     const currentLocale = mockStore.localeMessages.current;
     const troubleStartingMessage = currentLocale.troubleStarting.message;
     const restartMetamaskMessage = currentLocale.restartMetamask.message;

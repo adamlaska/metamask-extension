@@ -4,12 +4,11 @@ import AdvancedTab from './advanced-tab.component';
 
 export default {
   title: 'Pages/Settings/AdvancedTab',
-  id: __filename,
+
   argTypes: {
     warning: { control: 'text' },
     useNonceField: { control: 'boolean' },
     sendHexData: { control: 'boolean' },
-    advancedInlineGas: { control: 'boolean' },
     showFiatInTestnets: { control: 'boolean' },
     useLedgerLive: { control: 'boolean' },
     dismissSeedBackUpReminder: { control: 'boolean' },
@@ -19,7 +18,7 @@ export default {
     },
     setShowTestNetworks: { action: 'setShowTestNetworks' },
     setIpfsGateway: { action: 'setIpfsGateway' },
-    setLedgerTransportPreference: { action: 'setLedgerTransportPreference' },
+    setIsIpfsGatewayEnabled: { action: 'setIsIpfsGatewayEnabled' },
     setDismissSeedBackUpReminder: { action: 'setDismissSeedBackUpReminder' },
     setUseNonceField: { action: 'setUseNonceField' },
     setHexDataFeatureFlag: { action: 'setHexDataFeatureFlag' },
@@ -27,9 +26,6 @@ export default {
     history: { action: 'history' },
     showResetAccountConfirmationModal: {
       action: 'showResetAccountConfirmationModal',
-    },
-    setAdvancedInlineGasFeatureFlag: {
-      action: 'setAdvancedInlineGasFeatureFlag',
     },
   },
 };
@@ -39,7 +35,6 @@ export const DefaultStory = (args) => {
     {
       useNonceField,
       sendHexData,
-      advancedInlineGas,
       showFiatInTestnets,
       dismissSeedBackUpReminder,
     },
@@ -55,12 +50,6 @@ export const DefaultStory = (args) => {
   const handleSendHexData = () => {
     updateArgs({
       sendHexData: !sendHexData,
-    });
-  };
-
-  const handleAdvancedInlineGas = () => {
-    updateArgs({
-      advancedInlineGas: !advancedInlineGas,
     });
   };
 
@@ -83,8 +72,6 @@ export const DefaultStory = (args) => {
         setUseNonceField={handleUseNonceField}
         sendHexData={sendHexData}
         setHexDataFeatureFlag={handleSendHexData}
-        advancedInlineGas={advancedInlineGas}
-        setAdvancedInlineGasFeatureFlag={handleAdvancedInlineGas}
         showFiatInTestnets={showFiatInTestnets}
         setShowFiatConversionOnTestnetsPreference={handleShowFiatInTestnets}
         dismissSeedBackUpReminder={dismissSeedBackUpReminder}
@@ -100,7 +87,6 @@ DefaultStory.args = {
   warning: 'Warning Sample',
   useNonceField: false,
   sendHexData: false,
-  advancedInlineGas: false,
   showFiatInTestnets: false,
   useLedgerLive: false,
   dismissSeedBackUpReminder: false,

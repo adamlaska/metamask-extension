@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 import BigNumber from 'bignumber.js';
 import { isEqual, uniqBy } from 'lodash';
-import { formatIconUrlWithProxy } from '@metamask/controllers';
+import { formatIconUrlWithProxy } from '@metamask/assets-controllers';
 import { getTokenFiatAmount } from '../helpers/utils/token-util';
 import {
   getTokenExchangeRates,
@@ -16,7 +16,7 @@ import { getConversionRate } from '../ducks/metamask/metamask';
 import { getSwapsTokens } from '../ducks/swaps/swaps';
 import { isSwapsDefaultTokenSymbol } from '../../shared/modules/swaps.utils';
 import { toChecksumHexAddress } from '../../shared/modules/hexstring-utils';
-import { TOKEN_BUCKET_PRIORITY } from '../../shared/constants/swaps';
+import { TokenBucketPriority } from '../../shared/constants/swaps';
 import { CHAIN_IDS, CURRENCY_SYMBOLS } from '../../shared/constants/network';
 import { useEqualityCheck } from './useEqualityCheck';
 
@@ -58,14 +58,20 @@ export function getRenderableTokenData(
     : '';
 
   const chainIdForTokenIcons =
-    chainId === CHAIN_IDS.GOERLI ? CHAIN_IDS.MAINNET : chainId;
+    chainId === CHAIN_IDS.SEPOLIA ? CHAIN_IDS.MAINNET : chainId;
 
   const tokenIconUrl =
     (symbol === CURRENCY_SYMBOLS.ETH && chainId === CHAIN_IDS.MAINNET) ||
-    (symbol === CURRENCY_SYMBOLS.ETH && chainId === CHAIN_IDS.GOERLI) ||
+    (symbol === CURRENCY_SYMBOLS.ETH && chainId === CHAIN_IDS.SEPOLIA) ||
     (symbol === CURRENCY_SYMBOLS.BNB && chainId === CHAIN_IDS.BSC) ||
     (symbol === CURRENCY_SYMBOLS.MATIC && chainId === CHAIN_IDS.POLYGON) ||
-    (symbol === CURRENCY_SYMBOLS.AVALANCHE && chainId === CHAIN_IDS.AVALANCHE)
+    (symbol === CURRENCY_SYMBOLS.AVALANCHE &&
+      chainId === CHAIN_IDS.AVALANCHE) ||
+    (symbol === CURRENCY_SYMBOLS.ETH && chainId === CHAIN_IDS.OPTIMISM) ||
+    (symbol === CURRENCY_SYMBOLS.ETH && chainId === CHAIN_IDS.ARBITRUM) ||
+    (symbol === CURRENCY_SYMBOLS.ETH && chainId === CHAIN_IDS.LINEA_MAINNET) ||
+    (symbol === CURRENCY_SYMBOLS.ETH && chainId === CHAIN_IDS.ZKSYNC_ERA) ||
+    (symbol === CURRENCY_SYMBOLS.ETH && chainId === CHAIN_IDS.BASE)
       ? iconUrl
       : formatIconUrlWithProxy({
           chainId: chainIdForTokenIcons,
@@ -93,7 +99,7 @@ export function useTokensToSearch({
   usersTokens = [],
   topTokens = {},
   shuffledTokensList,
-  tokenBucketPriority = TOKEN_BUCKET_PRIORITY.OWNED,
+  tokenBucketPriority = TokenBucketPriority.owned,
 }) {
   const chainId = useSelector(getCurrentChainId);
   const tokenConversionRates = useSelector(getTokenExchangeRates, isEqual);
@@ -153,7 +159,7 @@ export function useTokensToSearch({
         chainId,
         tokenList,
       );
-      if (tokenBucketPriority === TOKEN_BUCKET_PRIORITY.OWNED) {
+      if (tokenBucketPriority === TokenBucketPriority.owned) {
         if (
           isSwapsDefaultTokenSymbol(renderableDataToken.symbol, chainId) ||
           usersTokensAddressMap[token.address.toLowerCase()]
@@ -186,7 +192,7 @@ export function useTokensToSearch({
       },
     );
     tokensToSearchBuckets.top = tokensToSearchBuckets.top.filter(Boolean);
-    if (tokenBucketPriority === TOKEN_BUCKET_PRIORITY.OWNED) {
+    if (tokenBucketPriority === TokenBucketPriority.owned) {
       return [
         ...tokensToSearchBuckets.owned,
         ...tokensToSearchBuckets.top,

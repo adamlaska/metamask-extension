@@ -1,9 +1,23 @@
 import EventEmitter from 'events';
 import { ObservableStore } from '@metamask/obs-store';
+import { v4 as uuid } from 'uuid';
+import log from 'loglevel';
+import { ApprovalType } from '@metamask/controller-utils';
 import { METAMASK_CONTROLLER_EVENTS } from '../metamask-controller';
 import { MINUTE } from '../../../shared/constants/time';
 import { AUTO_LOCK_TIMEOUT_ALARM } from '../../../shared/constants/alarms';
 import { isManifestV3 } from '../../../shared/modules/mv3.utils';
+// TODO: Remove restricted import
+// eslint-disable-next-line import/no-restricted-paths
+import { isBeta } from '../../../ui/helpers/utils/build-types';
+import {
+  ENVIRONMENT_TYPE_BACKGROUND,
+  POLLING_TOKEN_ENVIRONMENT_TYPES,
+  ORIGIN_METAMASK,
+} from '../../../shared/constants/app';
+import { DEFAULT_AUTO_LOCK_TIME_LIMIT } from '../../../shared/constants/preferences';
+
+/** @typedef {import('../../../shared/types/confirm').LastInteractedConfirmationInfo} LastInteractedConfirmationInfo */
 
 export default class AppStateController extends EventEmitter {
   /**
@@ -15,15 +29,16 @@ export default class AppStateController extends EventEmitter {
       isUnlocked,
       initState,
       onInactiveTimeout,
-      showUnlockRequest,
-      preferencesStore,
-      qrHardwareStore,
+      preferencesController,
+      messenger,
+      extension,
     } = opts;
     super();
 
+    this.extension = extension;
     this.onInactiveTimeout = onInactiveTimeout || (() => undefined);
     this.store = new ObservableStore({
-      timeoutMinutes: 0,
+      timeoutMinutes: DEFAULT_AUTO_LOCK_TIME_LIMIT,
       connectedStatusPopoverHasBeenShown: true,
       defaultHomeActiveTabName: null,
       browserEnvironment: {},
@@ -32,19 +47,38 @@ export default class AppStateController extends EventEmitter {
       fullScreenGasPollTokens: [],
       recoveryPhraseReminderHasBeenShown: false,
       recoveryPhraseReminderLastShown: new Date().getTime(),
-      collectiblesDetectionNoticeDismissed: false,
-      enableEIP1559V2NoticeDismissed: false,
+      outdatedBrowserWarningLastShown: null,
+      nftsDetectionNoticeDismissed: false,
       showTestnetMessageInDropdown: true,
-      showPortfolioTooltip: true,
+      showBetaHeader: isBeta(),
+      showPermissionsTour: true,
+      showNetworkBanner: true,
+      showAccountBanner: true,
       trezorModel: null,
+      currentPopupId: undefined,
+      onboardingDate: null,
+      lastViewedUserSurvey: null,
+      newPrivacyPolicyToastClickedOrClosed: null,
+      newPrivacyPolicyToastShownDate: null,
+      // This key is only used for checking if the user had set advancedGasFee
+      // prior to Migration 92.3 where we split out the setting to support
+      // multiple networks.
+      hadAdvancedGasFeesSetPriorToMigration92_3: false,
       ...initState,
       qrHardware: {},
-      collectiblesDropdownState: {},
+      nftsDropdownState: {},
       usedNetworks: {
         '0x1': true,
         '0x5': true,
         '0x539': true,
       },
+      surveyLinkLastClickedOrClosed: null,
+      signatureSecurityAlertResponses: {},
+      // States used for displaying the changed network toast
+      switchedNetworkDetails: null,
+      switchedNetworkNeverShowMessage: false,
+      currentExtensionPopupId: 0,
+      lastInteractedConfirmationInfo: undefined,
     });
     this.timer = null;
 
@@ -52,21 +86,33 @@ export default class AppStateController extends EventEmitter {
     this.waitingForUnlock = [];
     addUnlockListener(this.handleUnlock.bind(this));
 
-    this._showUnlockRequest = showUnlockRequest;
+    messenger.subscribe(
+      'PreferencesController:stateChange',
+      ({ preferences }) => {
+        const currentState = this.store.getState();
+        if (
+          preferences &&
+          currentState.timeoutMinutes !== preferences.autoLockTimeLimit
+        ) {
+          this._setInactiveTimeout(preferences.autoLockTimeLimit);
+        }
+      },
+    );
 
-    preferencesStore.subscribe(({ preferences }) => {
-      const currentState = this.store.getState();
-      if (currentState.timeoutMinutes !== preferences.autoLockTimeLimit) {
-        this._setInactiveTimeout(preferences.autoLockTimeLimit);
-      }
-    });
+    messenger.subscribe(
+      'KeyringController:qrKeyringStateChange',
+      (qrHardware) =>
+        this.store.updateState({
+          qrHardware,
+        }),
+    );
 
-    qrHardwareStore.subscribe((state) => {
-      this.store.updateState({ qrHardware: state });
-    });
+    const { preferences } = preferencesController.state;
 
-    const { preferences } = preferencesStore.getState();
     this._setInactiveTimeout(preferences.autoLockTimeLimit);
+
+    this.messagingSystem = messenger;
+    this._approvalRequestId = null;
   }
 
   /**
@@ -101,7 +147,7 @@ export default class AppStateController extends EventEmitter {
     this.waitingForUnlock.push({ resolve });
     this.emit(METAMASK_CONTROLLER_EVENTS.UPDATE_BADGE);
     if (shouldShowUnlockRequest) {
-      this._showUnlockRequest();
+      this._requestApproval();
     }
   }
 
@@ -115,6 +161,8 @@ export default class AppStateController extends EventEmitter {
       }
       this.emit(METAMASK_CONTROLLER_EVENTS.UPDATE_BADGE);
     }
+
+    this._acceptApproval();
   }
 
   /**
@@ -146,6 +194,36 @@ export default class AppStateController extends EventEmitter {
     });
   }
 
+  setSurveyLinkLastClickedOrClosed(time) {
+    this.store.updateState({
+      surveyLinkLastClickedOrClosed: time,
+    });
+  }
+
+  setOnboardingDate() {
+    this.store.updateState({
+      onboardingDate: Date.now(),
+    });
+  }
+
+  setLastViewedUserSurvey(id) {
+    this.store.updateState({
+      lastViewedUserSurvey: id,
+    });
+  }
+
+  setNewPrivacyPolicyToastClickedOrClosed() {
+    this.store.updateState({
+      newPrivacyPolicyToastClickedOrClosed: true,
+    });
+  }
+
+  setNewPrivacyPolicyToastShownDate(time) {
+    this.store.updateState({
+      newPrivacyPolicyToastShownDate: time,
+    });
+  }
+
   /**
    * Record the timestamp of the last time the user has seen the recovery phrase reminder
    *
@@ -154,6 +232,40 @@ export default class AppStateController extends EventEmitter {
   setRecoveryPhraseReminderLastShown(lastShown) {
     this.store.updateState({
       recoveryPhraseReminderLastShown: lastShown,
+    });
+  }
+
+  /**
+   * Record the timestamp of the last time the user has acceoted the terms of use
+   *
+   * @param {number} lastAgreed - timestamp when user last accepted the terms of use
+   */
+  setTermsOfUseLastAgreed(lastAgreed) {
+    this.store.updateState({
+      termsOfUseLastAgreed: lastAgreed,
+    });
+  }
+
+  /**
+   * Record if popover for snaps privacy warning has been shown
+   * on the first install of a snap.
+   *
+   * @param {boolean} shown - shown status
+   */
+  setSnapsInstallPrivacyWarningShownStatus(shown) {
+    this.store.updateState({
+      snapsInstallPrivacyWarningShown: shown,
+    });
+  }
+
+  /**
+   * Record the timestamp of the last time the user has seen the outdated browser warning
+   *
+   * @param {number} lastShown - Timestamp (in milliseconds) of when the user was last shown the warning.
+   */
+  setOutdatedBrowserWarningLastShown(lastShown) {
+    this.store.updateState({
+      outdatedBrowserWarningLastShown: lastShown,
     });
   }
 
@@ -191,37 +303,39 @@ export default class AppStateController extends EventEmitter {
     const { timeoutMinutes } = this.store.getState();
 
     if (this.timer) {
-      if (isManifestV3) {
-        chrome.alarms.clear(AUTO_LOCK_TIMEOUT_ALARM);
-      } else {
-        clearTimeout(this.timer);
-      }
+      clearTimeout(this.timer);
+    } else if (isManifestV3) {
+      this.extension.alarms.clear(AUTO_LOCK_TIMEOUT_ALARM);
     }
 
     if (!timeoutMinutes) {
       return;
     }
 
+    // This is a temporary fix until we add a state migration.
+    // Due to a bug in ui/pages/settings/advanced-tab/advanced-tab.component.js,
+    // it was possible for timeoutMinutes to be saved as a string, as explained
+    // in PR 25109. `alarms.create` will fail in that case. We are
+    // converting this to a number here to prevent that failure. Once
+    // we add a migration to update the malformed state to the right type,
+    // we will remove this conversion.
+    const timeoutToSet = Number(timeoutMinutes);
+
     if (isManifestV3) {
-      chrome.alarms.create(AUTO_LOCK_TIMEOUT_ALARM, {
-        delayInMinutes: timeoutMinutes,
-        periodInMinutes: timeoutMinutes,
+      this.extension.alarms.create(AUTO_LOCK_TIMEOUT_ALARM, {
+        delayInMinutes: timeoutToSet,
+        periodInMinutes: timeoutToSet,
       });
-      chrome.alarms.onAlarm.addListener(() => {
-        chrome.alarms.getAll((alarms) => {
-          const hasAlarm = alarms.find(
-            (alarm) => alarm.name === AUTO_LOCK_TIMEOUT_ALARM,
-          );
-          if (hasAlarm) {
-            this.onInactiveTimeout();
-            chrome.alarms.clear(AUTO_LOCK_TIMEOUT_ALARM);
-          }
-        });
+      this.extension.alarms.onAlarm.addListener((alarmInfo) => {
+        if (alarmInfo.name === AUTO_LOCK_TIMEOUT_ALARM) {
+          this.onInactiveTimeout();
+          this.extension.alarms.clear(AUTO_LOCK_TIMEOUT_ALARM);
+        }
       });
     } else {
       this.timer = setTimeout(
         () => this.onInactiveTimeout(),
-        timeoutMinutes * MINUTE,
+        timeoutToSet * MINUTE,
       );
     }
   }
@@ -243,10 +357,15 @@ export default class AppStateController extends EventEmitter {
    * @param pollingTokenType
    */
   addPollingToken(pollingToken, pollingTokenType) {
-    const prevState = this.store.getState()[pollingTokenType];
-    this.store.updateState({
-      [pollingTokenType]: [...prevState, pollingToken],
-    });
+    if (
+      pollingTokenType !==
+      POLLING_TOKEN_ENVIRONMENT_TYPES[ENVIRONMENT_TYPE_BACKGROUND]
+    ) {
+      const prevState = this.store.getState()[pollingTokenType];
+      this.store.updateState({
+        [pollingTokenType]: [...prevState, pollingToken],
+      });
+    }
   }
 
   /**
@@ -256,10 +375,15 @@ export default class AppStateController extends EventEmitter {
    * @param pollingTokenType
    */
   removePollingToken(pollingToken, pollingTokenType) {
-    const prevState = this.store.getState()[pollingTokenType];
-    this.store.updateState({
-      [pollingTokenType]: prevState.filter((token) => token !== pollingToken),
-    });
+    if (
+      pollingTokenType !==
+      POLLING_TOKEN_ENVIRONMENT_TYPES[ENVIRONMENT_TYPE_BACKGROUND]
+    ) {
+      const prevState = this.store.getState()[pollingTokenType];
+      this.store.updateState({
+        [pollingTokenType]: prevState.filter((token) => token !== pollingToken),
+      });
+    }
   }
 
   /**
@@ -283,12 +407,78 @@ export default class AppStateController extends EventEmitter {
   }
 
   /**
-   * Sets whether the portfolio site tooltip should be shown on the home page
+   * Sets whether the beta notification heading on the home page
    *
-   * @param showPortfolioTooltip
+   * @param showBetaHeader
    */
-  setShowPortfolioTooltip(showPortfolioTooltip) {
-    this.store.updateState({ showPortfolioTooltip });
+  setShowBetaHeader(showBetaHeader) {
+    this.store.updateState({ showBetaHeader });
+  }
+
+  /**
+   * Sets whether the permissions tour should be shown to the user
+   *
+   * @param showPermissionsTour
+   */
+  setShowPermissionsTour(showPermissionsTour) {
+    this.store.updateState({ showPermissionsTour });
+  }
+
+  /**
+   * Sets whether the Network Banner should be shown
+   *
+   * @param showNetworkBanner
+   */
+  setShowNetworkBanner(showNetworkBanner) {
+    this.store.updateState({ showNetworkBanner });
+  }
+
+  /**
+   * Sets whether the Account Banner should be shown
+   *
+   * @param showAccountBanner
+   */
+  setShowAccountBanner(showAccountBanner) {
+    this.store.updateState({ showAccountBanner });
+  }
+
+  /**
+   * Sets a unique ID for the current extension popup
+   *
+   * @param currentExtensionPopupId
+   */
+  setCurrentExtensionPopupId(currentExtensionPopupId) {
+    this.store.updateState({ currentExtensionPopupId });
+  }
+
+  /**
+   * Sets an object with networkName and appName
+   * or `null` if the message is meant to be cleared
+   *
+   * @param {{ origin: string, networkClientId: string } | null} switchedNetworkDetails - Details about the network that MetaMask just switched to.
+   */
+  setSwitchedNetworkDetails(switchedNetworkDetails) {
+    this.store.updateState({ switchedNetworkDetails });
+  }
+
+  /**
+   * Clears the switched network details in state
+   */
+  clearSwitchedNetworkDetails() {
+    this.store.updateState({ switchedNetworkDetails: null });
+  }
+
+  /**
+   * Remembers if the user prefers to never see the
+   * network switched message again
+   *
+   * @param {boolean} switchedNetworkNeverShowMessage
+   */
+  setSwitchedNetworkNeverShowMessage(switchedNetworkNeverShowMessage) {
+    this.store.updateState({
+      switchedNetworkDetails: null,
+      switchedNetworkNeverShowMessage,
+    });
   }
 
   /**
@@ -301,37 +491,13 @@ export default class AppStateController extends EventEmitter {
   }
 
   /**
-   * A setter for the `collectiblesDetectionNoticeDismissed` property
+   * A setter for the `nftsDropdownState` property
    *
-   * @param collectiblesDetectionNoticeDismissed
+   * @param nftsDropdownState
    */
-  setCollectiblesDetectionNoticeDismissed(
-    collectiblesDetectionNoticeDismissed,
-  ) {
+  updateNftDropDownState(nftsDropdownState) {
     this.store.updateState({
-      collectiblesDetectionNoticeDismissed,
-    });
-  }
-
-  /**
-   * A setter for the `enableEIP1559V2NoticeDismissed` property
-   *
-   * @param enableEIP1559V2NoticeDismissed
-   */
-  setEnableEIP1559V2NoticeDismissed(enableEIP1559V2NoticeDismissed) {
-    this.store.updateState({
-      enableEIP1559V2NoticeDismissed,
-    });
-  }
-
-  /**
-   * A setter for the `collectiblesDropdownState` property
-   *
-   * @param collectiblesDropdownState
-   */
-  updateCollectibleDropDownState(collectiblesDropdownState) {
-    this.store.updateState({
-      collectiblesDropdownState,
+      nftsDropdownState,
     });
   }
 
@@ -347,5 +513,139 @@ export default class AppStateController extends EventEmitter {
     usedNetworks[chainId] = true;
 
     this.store.updateState({ usedNetworks });
+  }
+
+  ///: BEGIN:ONLY_INCLUDE_IF(build-mmi)
+  /**
+   * Set the interactive replacement token with a url and the old refresh token
+   *
+   * @param {object} opts
+   * @param opts.url
+   * @param opts.oldRefreshToken
+   * @returns {void}
+   */
+  showInteractiveReplacementTokenBanner({ url, oldRefreshToken }) {
+    this.store.updateState({
+      interactiveReplacementToken: {
+        url,
+        oldRefreshToken,
+      },
+    });
+  }
+
+  /**
+   * Set the setCustodianDeepLink with the fromAddress and custodyId
+   *
+   * @param {object} opts
+   * @param opts.fromAddress
+   * @param opts.custodyId
+   * @returns {void}
+   */
+  setCustodianDeepLink({ fromAddress, custodyId }) {
+    this.store.updateState({
+      custodianDeepLink: { fromAddress, custodyId },
+    });
+  }
+
+  setNoteToTraderMessage(message) {
+    this.store.updateState({
+      noteToTraderMessage: message,
+    });
+  }
+
+  ///: END:ONLY_INCLUDE_IF
+
+  getSignatureSecurityAlertResponse(securityAlertId) {
+    return this.store.getState().signatureSecurityAlertResponses[
+      securityAlertId
+    ];
+  }
+
+  addSignatureSecurityAlertResponse(securityAlertResponse) {
+    const currentState = this.store.getState();
+    const { signatureSecurityAlertResponses } = currentState;
+    this.store.updateState({
+      signatureSecurityAlertResponses: {
+        ...signatureSecurityAlertResponses,
+        [securityAlertResponse.securityAlertId]: securityAlertResponse,
+      },
+    });
+  }
+
+  /**
+   * A setter for the currentPopupId which indicates the id of popup window that's currently active
+   *
+   * @param currentPopupId
+   */
+  setCurrentPopupId(currentPopupId) {
+    this.store.updateState({
+      currentPopupId,
+    });
+  }
+
+  /**
+   * The function returns information about the last confirmation user interacted with
+   *
+   * @type {LastInteractedConfirmationInfo}: Information about the last confirmation user interacted with.
+   */
+  getLastInteractedConfirmationInfo() {
+    return this.store.getState().lastInteractedConfirmationInfo;
+  }
+
+  /**
+   * Update the information about the last confirmation user interacted with
+   *
+   * @type {LastInteractedConfirmationInfo} - information about transaction user last interacted with.
+   */
+  setLastInteractedConfirmationInfo(lastInteractedConfirmationInfo) {
+    this.store.updateState({
+      lastInteractedConfirmationInfo,
+    });
+  }
+
+  /**
+   * A getter to retrieve currentPopupId saved in the appState
+   */
+  getCurrentPopupId() {
+    return this.store.getState().currentPopupId;
+  }
+
+  _requestApproval() {
+    // If we already have a pending request this is a no-op
+    if (this._approvalRequestId) {
+      return;
+    }
+    this._approvalRequestId = uuid();
+
+    this.messagingSystem
+      .call(
+        'ApprovalController:addRequest',
+        {
+          id: this._approvalRequestId,
+          origin: ORIGIN_METAMASK,
+          type: ApprovalType.Unlock,
+        },
+        true,
+      )
+      .catch(() => {
+        // If the promise fails, we allow a new popup to be triggered
+        this._approvalRequestId = null;
+      });
+  }
+
+  _acceptApproval() {
+    if (!this._approvalRequestId) {
+      return;
+    }
+    try {
+      this.messagingSystem.call(
+        'ApprovalController:acceptRequest',
+        this._approvalRequestId,
+      );
+    } catch (error) {
+      log.error('Failed to unlock approval request', error);
+    }
+
+    this._approvalRequestId = null;
   }
 }
