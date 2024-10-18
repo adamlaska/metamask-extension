@@ -1,23 +1,22 @@
-import { compose } from 'redux';
 import { connect } from 'react-redux';
 import { withRouter } from 'react-router-dom';
+import { compose } from 'redux';
+import { DEFAULT_AUTO_LOCK_TIME_LIMIT } from '../../../../shared/constants/preferences';
+import { getPreferences } from '../../../selectors';
 import {
+  backupUserData,
   displayWarning,
+  setAutoLockTimeLimit,
+  setDismissSeedBackUpReminder,
   setFeatureFlag,
-  showModal,
+  setShowExtensionInFullSizeView,
   setShowFiatConversionOnTestnetsPreference,
   setShowTestNetworks,
-  setAutoLockTimeLimit,
+  setSmartTransactionsPreferenceEnabled,
   setUseNonceField,
-  setIpfsGateway,
-  setLedgerTransportPreference,
-  setDismissSeedBackUpReminder,
-  setUseTokenDetection,
-  backupUserData,
-  restoreUserData,
+  showModal,
 } from '../../../store/actions';
-import { getPreferences } from '../../../selectors';
-import { doesUserHaveALedgerAccount } from '../../../ducks/metamask/metamask';
+import { getSmartTransactionsPreferenceEnabled } from '../../../../shared/modules/selectors';
 import AdvancedTab from './advanced-tab.component';
 
 export const mapStateToProps = (state) => {
@@ -26,48 +25,38 @@ export const mapStateToProps = (state) => {
     metamask,
   } = state;
   const {
-    featureFlags: { sendHexData, advancedInlineGas } = {},
+    featureFlags: { sendHexData } = {},
     useNonceField,
-    ipfsGateway,
-    ledgerTransportType,
     dismissSeedBackUpReminder,
-    useTokenDetection,
   } = metamask;
   const {
     showFiatInTestnets,
     showTestNetworks,
-    autoLockTimeLimit = 0,
+    showExtensionInFullSizeView,
+    autoLockTimeLimit = DEFAULT_AUTO_LOCK_TIME_LIMIT,
   } = getPreferences(state);
-
-  const userHasALedgerAccount = doesUserHaveALedgerAccount(state);
 
   return {
     warning,
     sendHexData,
-    advancedInlineGas,
     showFiatInTestnets,
     showTestNetworks,
+    showExtensionInFullSizeView,
+    smartTransactionsEnabled: getSmartTransactionsPreferenceEnabled(state),
     autoLockTimeLimit,
     useNonceField,
-    ipfsGateway,
-    ledgerTransportType,
     dismissSeedBackUpReminder,
-    userHasALedgerAccount,
-    useTokenDetection,
   };
 };
 
 export const mapDispatchToProps = (dispatch) => {
   return {
     backupUserData: () => backupUserData(),
-    restoreUserData: (jsonString) => restoreUserData(jsonString),
     setHexDataFeatureFlag: (shouldShow) =>
       dispatch(setFeatureFlag('sendHexData', shouldShow)),
     displayWarning: (warning) => dispatch(displayWarning(warning)),
     showResetAccountConfirmationModal: () =>
       dispatch(showModal({ name: 'CONFIRM_RESET_ACCOUNT' })),
-    setAdvancedInlineGasFeatureFlag: (shouldShow) =>
-      dispatch(setFeatureFlag('advancedInlineGas', shouldShow)),
     setUseNonceField: (value) => dispatch(setUseNonceField(value)),
     setShowFiatConversionOnTestnetsPreference: (value) => {
       return dispatch(setShowFiatConversionOnTestnetsPreference(value));
@@ -75,20 +64,17 @@ export const mapDispatchToProps = (dispatch) => {
     setShowTestNetworks: (value) => {
       return dispatch(setShowTestNetworks(value));
     },
+    setShowExtensionInFullSizeView: (value) => {
+      return dispatch(setShowExtensionInFullSizeView(value));
+    },
+    setSmartTransactionsEnabled: (value) => {
+      return dispatch(setSmartTransactionsPreferenceEnabled(value));
+    },
     setAutoLockTimeLimit: (value) => {
       return dispatch(setAutoLockTimeLimit(value));
     },
-    setIpfsGateway: (value) => {
-      return dispatch(setIpfsGateway(value));
-    },
-    setLedgerTransportPreference: (value) => {
-      return dispatch(setLedgerTransportPreference(value));
-    },
     setDismissSeedBackUpReminder: (value) => {
       return dispatch(setDismissSeedBackUpReminder(value));
-    },
-    setUseTokenDetection: (value) => {
-      return dispatch(setUseTokenDetection(value));
     },
   };
 };

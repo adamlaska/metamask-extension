@@ -68,9 +68,6 @@
   "forgetDevice": {
     "message": "આ ઉપકરણને ભૂલી જાઓ"
   },
-  "getStarted": {
-    "message": "પ્રારંભ કરો"
-  },
   "hide": {
     "message": "છુપાવો"
   },
@@ -105,9 +102,6 @@
   },
   "password": {
     "message": "પાસવર્ડ"
-  },
-  "queue": {
-    "message": "કતારમાં"
   },
   "reject": {
     "message": "નકારો"
@@ -147,8 +141,5 @@
   },
   "userName": {
     "message": "વપરાશકર્તાનામ"
-  },
-  "viewAccount": {
-    "message": "એકાઉન્ટ જુઓ"
   }
 }
