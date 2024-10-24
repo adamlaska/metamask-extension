@@ -1,180 +1,108 @@
 import React from 'react';
-import sinon from 'sinon';
-import { shallow } from 'enzyme';
-import TextField from '../../../components/ui/text-field';
-import { LEDGER_TRANSPORT_TYPES } from '../../../../shared/constants/hardware-wallets';
-import ToggleButton from '../../../components/ui/toggle-button';
-import AdvancedTab from './advanced-tab.component';
+import { fireEvent } from '@testing-library/react';
+import configureMockStore from 'redux-mock-store';
+import thunk from 'redux-thunk';
+import mockState from '../../../../test/data/mock-state.json';
+import { renderWithProvider } from '../../../../test/lib/render-helpers';
+import AdvancedTab from '.';
+
+const mockSetAutoLockTimeLimit = jest.fn().mockReturnValue({ type: 'TYPE' });
+const mockSetShowTestNetworks = jest.fn();
+const mockSetShowFiatConversionOnTestnetsPreference = jest.fn();
+const mockSetStxPrefEnabled = jest.fn();
+
+jest.mock('../../../store/actions.ts', () => {
+  return {
+    setAutoLockTimeLimit: (...args) => mockSetAutoLockTimeLimit(...args),
+    setShowTestNetworks: () => mockSetShowTestNetworks,
+    setShowFiatConversionOnTestnetsPreference: () =>
+      mockSetShowFiatConversionOnTestnetsPreference,
+    setSmartTransactionsPreferenceEnabled: () => mockSetStxPrefEnabled,
+  };
+});
 
 describe('AdvancedTab Component', () => {
-  let component;
-  let setAutoLockTimeLimitSpy = sinon.spy();
-  const toggleTestnet = sinon.spy();
-  const toggleTokenDetection = sinon.spy();
+  const mockStore = configureMockStore([thunk])(mockState);
 
-  beforeAll(() => {
-    component = shallow(
-      <AdvancedTab
-        ipfsGateway=""
-        setAutoLockTimeLimit={setAutoLockTimeLimitSpy}
-        setIpfsGateway={() => undefined}
-        setShowFiatConversionOnTestnetsPreference={() => undefined}
-        setShowTestNetworks={toggleTestnet}
-        showTestNetworks={false}
-        ledgerTransportType={LEDGER_TRANSPORT_TYPES.U2F}
-        setLedgerTransportPreference={() => undefined}
-        setDismissSeedBackUpReminder={() => undefined}
-        dismissSeedBackUpReminder={false}
-        useTokenDetection
-        setUseTokenDetection={toggleTokenDetection}
-        userHasALedgerAccount
-        backupUserData={() => undefined}
-        restoreUserData={() => undefined}
-      />,
-      {
-        context: {
-          t: (s) => `_${s}`,
-        },
-      },
-    );
+  it('should match snapshot', () => {
+    const { container } = renderWithProvider(<AdvancedTab />, mockStore);
+
+    expect(container).toMatchSnapshot();
   });
 
-  it('should render backup button', () => {
-    expect(component.find('.settings-page__content-row')).toHaveLength(15);
-
-    expect(
-      component
-        .find('.settings-page__content-row')
-        .at(10)
-        .find('.settings-page__content-item'),
-    ).toHaveLength(2);
-
-    expect(
-      component
-        .find('.settings-page__content-row')
-        .at(10)
-        .find('.settings-page__content-item')
-        .at(0)
-        .find('.settings-page__content-description')
-        .props().children,
-    ).toStrictEqual('_backupUserDataDescription');
-
-    expect(
-      component
-        .find('.settings-page__content-row')
-        .at(10)
-        .find('.settings-page__content-item')
-        .at(1)
-        .find('Button')
-        .props().children,
-    ).toStrictEqual('_backup');
+  it('should render export data button', () => {
+    const { queryByTestId } = renderWithProvider(<AdvancedTab />, mockStore);
+    const exportDataButton = queryByTestId('export-data-button');
+    expect(exportDataButton).toBeInTheDocument();
   });
 
-  it('should render restore button', () => {
-    expect(component.find('.settings-page__content-row')).toHaveLength(15);
+  it('should default the auto-lockout time to 0', () => {
+    const { queryByTestId } = renderWithProvider(<AdvancedTab />, mockStore);
+    const autoLockoutTime = queryByTestId('auto-lockout-time');
 
-    expect(
-      component
-        .find('.settings-page__content-row')
-        .at(11)
-        .find('.settings-page__content-item'),
-    ).toHaveLength(2);
-
-    expect(
-      component
-        .find('.settings-page__content-row')
-        .at(11)
-        .find('.settings-page__content-item')
-        .at(0)
-        .find('.settings-page__content-description')
-        .props().children,
-    ).toStrictEqual('_restoreUserDataDescription');
-
-    expect(
-      component
-        .find('.settings-page__content-row')
-        .at(11)
-        .find('.settings-page__content-item')
-        .at(1)
-        .find('label')
-        .props().children,
-    ).toStrictEqual('_restore');
+    expect(autoLockoutTime).toHaveValue('0');
   });
 
-  it('should update autoLockTimeLimit', () => {
-    setAutoLockTimeLimitSpy = sinon.spy();
-    component = shallow(
-      <AdvancedTab
-        ipfsGateway=""
-        setAutoLockTimeLimit={setAutoLockTimeLimitSpy}
-        setIpfsGateway={() => undefined}
-        setShowFiatConversionOnTestnetsPreference={() => undefined}
-        ledgerTransportType={LEDGER_TRANSPORT_TYPES.U2F}
-        setLedgerTransportPreference={() => undefined}
-        setDismissSeedBackUpReminder={() => undefined}
-        dismissSeedBackUpReminder={false}
-        setShowTestNetworks={toggleTestnet}
-        useTokenDetection
-        setUseTokenDetection={toggleTokenDetection}
-        userHasALedgerAccount
-        backupUserData={() => undefined}
-        restoreUserData={() => undefined}
-      />,
-      {
-        context: {
-          t: (s) => `_${s}`,
-        },
-      },
-    );
+  it('should update the auto-lockout time', () => {
+    const { queryByTestId } = renderWithProvider(<AdvancedTab />, mockStore);
+    const autoLockoutTime = queryByTestId('auto-lockout-time');
+    const autoLockoutButton = queryByTestId('auto-lockout-button');
 
-    const autoTimeout = component.find('.settings-page__content-row').at(9);
-    const textField = autoTimeout.find(TextField);
+    fireEvent.change(autoLockoutTime, { target: { value: '1440' } });
 
-    textField.props().onChange({ target: { value: 1440 } });
-    expect(component.state().autoLockTimeLimit).toStrictEqual(1440);
+    expect(autoLockoutTime).toHaveValue('1440');
 
-    autoTimeout.find('.settings-tab__rpc-save-button').simulate('click');
-    expect(setAutoLockTimeLimitSpy.args[0][0]).toStrictEqual(1440);
+    fireEvent.click(autoLockoutButton);
+
+    expect(mockSetAutoLockTimeLimit).toHaveBeenCalled();
+  });
+
+  it('should update the auto-lockout time to 0 if the input field is set to empty', () => {
+    const { queryByTestId } = renderWithProvider(<AdvancedTab />, mockStore);
+    const autoLockoutTime = queryByTestId('auto-lockout-time');
+    const autoLockoutButton = queryByTestId('auto-lockout-button');
+
+    fireEvent.change(autoLockoutTime, { target: { value: '' } });
+
+    expect(autoLockoutTime).toHaveValue('');
+
+    fireEvent.click(autoLockoutButton);
+
+    expect(mockSetAutoLockTimeLimit).toHaveBeenCalledWith(0);
+  });
+
+  it('should toggle show fiat on test networks', () => {
+    const { queryAllByRole } = renderWithProvider(<AdvancedTab />, mockStore);
+
+    const testShowFiatOnTestnets = queryAllByRole('checkbox')[2];
+
+    fireEvent.click(testShowFiatOnTestnets);
+
+    expect(mockSetShowFiatConversionOnTestnetsPreference).toHaveBeenCalled();
   });
 
   it('should toggle show test networks', () => {
-    const testNetworks = component.find('.settings-page__content-row').at(7);
-    const toggleButton = testNetworks.find(ToggleButton);
-    toggleButton.first().simulate('toggle');
-    expect(toggleTestnet.calledOnce).toStrictEqual(true);
+    const { queryAllByRole } = renderWithProvider(<AdvancedTab />, mockStore);
+
+    const testNetworkToggle = queryAllByRole('checkbox')[3];
+
+    fireEvent.click(testNetworkToggle);
+
+    expect(mockSetShowTestNetworks).toHaveBeenCalled();
   });
 
-  it('should toggle token detection', () => {
-    component = shallow(
-      <AdvancedTab
-        ipfsGateway=""
-        setAutoLockTimeLimit={setAutoLockTimeLimitSpy}
-        setIpfsGateway={() => undefined}
-        setShowFiatConversionOnTestnetsPreference={() => undefined}
-        setShowTestNetworks={toggleTestnet}
-        showTestNetworks={false}
-        ledgerTransportType={LEDGER_TRANSPORT_TYPES.U2F}
-        setLedgerTransportPreference={() => undefined}
-        setDismissSeedBackUpReminder={() => undefined}
-        dismissSeedBackUpReminder={false}
-        useTokenDetection
-        setUseTokenDetection={toggleTokenDetection}
-        userHasALedgerAccount
-        backupUserData={() => undefined}
-        restoreUserData={() => undefined}
-      />,
-      {
-        context: {
-          trackEvent: () => undefined,
-          t: (s) => `_${s}`,
-        },
-      },
-    );
-    const useTokenDetection = component
-      .find('.settings-page__content-row')
-      .at(4);
-    const toggleButton = useTokenDetection.find(ToggleButton);
-    toggleButton.first().simulate('toggle');
-    expect(toggleTokenDetection.calledOnce).toStrictEqual(true);
+  describe('renderToggleStxOptIn', () => {
+    it('should render the toggle button for Smart Transactions', () => {
+      const { queryByTestId } = renderWithProvider(<AdvancedTab />, mockStore);
+      const toggleButton = queryByTestId('settings-page-stx-opt-in-toggle');
+      expect(toggleButton).toBeInTheDocument();
+    });
+
+    it('should call setSmartTransactionsOptInStatus when the toggle button is clicked', () => {
+      const { queryByTestId } = renderWithProvider(<AdvancedTab />, mockStore);
+      const toggleButton = queryByTestId('settings-page-stx-opt-in-toggle');
+      fireEvent.click(toggleButton);
+      expect(mockSetStxPrefEnabled).toHaveBeenCalled();
+    });
   });
 });

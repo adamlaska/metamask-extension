@@ -1,44 +1,66 @@
 import { Story, Canvas, ArgsTable } from '@storybook/addon-docs';
 
+import { AvatarBase } from '../';
+
 import { AvatarFavicon } from './avatar-favicon';
 
 # AvatarFavicon
 
-The `AvatarFavicon` is an image component that renders an icon that is provided in the form of a URL.
+The `AvatarFavicon` is an image component that represents a dapp or third party service
+
+[MetaMask Design System Guides](https://www.notion.so/MetaMask-Design-System-Guides-Design-f86ecc914d6b4eb6873a122b83c12940)
 
 <Canvas>
-  <Story id="ui-components-component-library-avatar-favicon-avatar-favicon-stories-js--default-story" />
+  <Story id="components-componentlibrary-avatarfavicon--default-story" />
 </Canvas>
 
 ## Props
-
-The `AvatarFavicon` accepts all props below as well as all [Box](/docs/ui-components-ui-box-box-stories-js--default-story) component props
 
 <ArgsTable of={AvatarFavicon} />
 
 ### Size
 
-Use the `size` prop to set the size of the `AvatarFavicon`.
+Use the `size` prop and the `AvatarFaviconSize` enum from `../../component-library` to change the size of `AvatarFavicon`
 
 Possible sizes include:
 
-- `xs` 16px
-- `sm` 24px
-- `md` 32px
-- `lg` 40px
-- `xl` 48px
+- `AvatarFaviconSize.Xs` 16px
+- `AvatarFaviconSize.Sm` 24px
+- `AvatarFaviconSize.Md` 32px
+- `AvatarFaviconSize.Lg` 40px
+- `AvatarFaviconSize.Xl` 48px
 
-Defaults to `md`
+Defaults to `AvatarFaviconSize.MD`
 
 <Canvas>
-  <Story id="ui-components-component-library-avatar-favicon-avatar-favicon-stories-js--size" />
+  <Story id="components-componentlibrary-avatarfavicon--size-story" />
 </Canvas>
 
-### Image Source
+```jsx
+import { AvatarFavicon, AvatarFaviconSize } from '../../component-library';
 
-Use the `imageSource` prop to set the image to be rendered of the `AvatarFavicon`.
+<AvatarFavicon size={AvatarFaviconSize.Xs} />
+<AvatarFavicon size={AvatarFaviconSize.Sm} />
+<AvatarFavicon size={AvatarFaviconSize.Md} />
+<AvatarFavicon size={AvatarFaviconSize.Lg} />
+<AvatarFavicon size={AvatarFaviconSize.Xl} />
+```
+
+### Src
+
+Use the `src` prop to set the image to be rendered of the `AvatarFavicon`.
+
+<Canvas>
+  <Story id="components-componentlibrary-avatarfavicon--src" />
+</Canvas>
+
+```jsx
+import { AvatarFavicon } from '../../component-library';
+
+<AvatarFavicon src="https://uniswap.org/favicon.ico" />
+<AvatarFavicon src="https://1inch.exchange/assets/favicon/favicon-32x32.png" />
+```
 
 ### Fallback Icon Props
 
-If there is no `imageSource` then in that case an [icon](/docs/ui-components-component-library-icon-icon-stories-js--default-story) will be used as the fallback display and it can be customised via `fallbackIconProps`.
-
+If there is no `src` then in that case an [icon](/docs/components-componentlibrary-icon--default-story) will be used as the fallback display and it can be customised via `fallbackIconProps`.

@@ -1,5 +1,7 @@
-import { GAS_ESTIMATE_TYPES } from '../../shared/constants/gas';
+import { GasEstimateTypes } from '../../shared/constants/gas';
 import { getInitialSendStateWithExistingTxState } from '../../test/jest/mocks';
+import { CHAIN_IDS } from '../../shared/constants/network';
+import { mockNetworkState } from '../../test/stub/networks';
 import {
   getCustomGasLimit,
   getCustomGasPrice,
@@ -20,13 +22,11 @@ describe('custom-gas selectors', () => {
     it('should return true for gas.customData.price 0x77359400', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             low: '1',
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         gas: {
           customData: { price: '0x77359400' },
@@ -37,13 +37,11 @@ describe('custom-gas selectors', () => {
     it('should return true for gas.customData.price null', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             low: '1',
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         gas: {
           customData: { price: null },
@@ -54,13 +52,11 @@ describe('custom-gas selectors', () => {
     it('should return true gas.customData.price undefined', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             low: '1',
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         gas: {
           customData: { price: undefined },
@@ -71,13 +67,11 @@ describe('custom-gas selectors', () => {
     it('should return false gas.basicEstimates.safeLow undefined', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.NONE,
+          gasEstimateType: GasEstimateTypes.none,
           gasFeeEstimates: {
             low: undefined,
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         gas: {
           customData: { price: '0x77359400' },
@@ -91,13 +85,11 @@ describe('custom-gas selectors', () => {
     it('should return false for gas.customData.price null', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             high: '150',
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         gas: {
           customData: { price: null },
@@ -108,13 +100,11 @@ describe('custom-gas selectors', () => {
     it('should return false gas.basicEstimates.fast undefined', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             high: undefined,
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         gas: {
           customData: { price: '0x77359400' },
@@ -125,13 +115,11 @@ describe('custom-gas selectors', () => {
     it('should return false gas.basicEstimates.price 0x205d0bae00 (139)', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             high: '139',
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         gas: {
           customData: { price: '0x205d0bae00' },
@@ -142,13 +130,11 @@ describe('custom-gas selectors', () => {
     it('should return false gas.basicEstimates.price 0x1bf08eb000 (120)', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             high: '139',
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         gas: {
           customData: { price: '0x1bf08eb000' },
@@ -159,13 +145,11 @@ describe('custom-gas selectors', () => {
     it('should return false gas.basicEstimates.price 0x28bed01600 (175)', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             high: '139',
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         gas: {
           customData: { price: '0x28bed01600' },
@@ -176,13 +160,11 @@ describe('custom-gas selectors', () => {
     it('should return true gas.basicEstimates.price 0x30e4f9b400 (210)', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             high: '139',
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         gas: {
           customData: { price: '0x30e4f9b400' },
@@ -193,13 +175,11 @@ describe('custom-gas selectors', () => {
     it('should return false gas.basicEstimates.price 0x28bed01600 (175) (checkSend=true)', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             high: '139',
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         send: getInitialSendStateWithExistingTxState({
           gas: {
@@ -215,13 +195,11 @@ describe('custom-gas selectors', () => {
     it('should return true gas.basicEstimates.price 0x30e4f9b400 (210) (checkSend=true)', () => {
       const mockState = {
         metamask: {
-          gasEstimateType: GAS_ESTIMATE_TYPES.LEGACY,
+          gasEstimateType: GasEstimateTypes.legacy,
           gasFeeEstimates: {
             high: '139',
           },
-          networkDetails: {
-            EIPS: {},
-          },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
         },
         send: getInitialSendStateWithExistingTxState({
           gas: {
