@@ -347,7 +347,7 @@
     "jest-environment-jsdom": "^29.1.2",
     "jest-it-up": "^2.0.2",
     "jsdom": "^11.2.0",
-    "koa": "^2.7.0",
+    "koa": "^2.16.1",
     "lavamoat": "^6.2.0",
     "lavamoat-browserify": "^15.2.0",
     "lavamoat-viz": "^6.0.9",
