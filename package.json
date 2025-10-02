@@ -359,7 +359,7 @@
     "nock": "^13.2.9",
     "node-fetch": "^2.6.1",
     "nyc": "^15.0.0",
-    "patch-package": "^6.4.7",
+    "patch-package": "^8.0.1",
     "polyfill-crypto.getrandomvalues": "^1.0.0",
     "prettier": "^2.7.1",
     "prettier-plugin-sort-json": "^0.0.1",
