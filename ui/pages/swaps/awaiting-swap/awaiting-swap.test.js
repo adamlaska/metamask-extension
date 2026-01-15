@@ -2,14 +2,14 @@ import React from 'react';
 import configureMockStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
 
+import { setBackgroundConnection } from '../../../store/background-connection';
 import {
   renderWithProvider,
   createSwapsMockStore,
-  setBackgroundConnection,
   fireEvent,
 } from '../../../../test/jest';
 import {
-  SLIPPAGE,
+  Slippage,
   QUOTES_EXPIRED_ERROR,
   SWAP_FAILED_ERROR,
   ERROR_FETCHING_QUOTES,
@@ -28,7 +28,8 @@ const createProps = (customProps = {}) => {
     tokensReceived: 'tokens received:',
     submittingSwap: true,
     inputValue: 5,
-    maxSlippage: SLIPPAGE.DEFAULT,
+    maxSlippage: Slippage.default,
+    txId: 6571648590592143,
     ...customProps,
   };
 };
@@ -38,6 +39,8 @@ setBackgroundConnection({
 });
 
 describe('AwaitingSwap', () => {
+  process.env.METAMASK_BUILD_TYPE = 'main';
+
   it('renders the component with initial props', () => {
     const store = configureMockStore()(createSwapsMockStore());
     const { getByText, getByTestId } = renderWithProvider(
@@ -94,7 +97,7 @@ describe('AwaitingSwap', () => {
       store,
     );
     expect(getByText('Swap failed')).toBeInTheDocument();
-    fireEvent.click(getByText('metamask-flask.zendesk.com'));
+    fireEvent.click(getByText('support.metamask.io'));
     expect(getByText('Try again')).toBeInTheDocument();
   });
 

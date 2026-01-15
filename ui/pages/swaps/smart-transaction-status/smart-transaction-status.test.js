@@ -1,15 +1,14 @@
 import React from 'react';
 import configureMockStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
-
+import { setBackgroundConnection } from '../../../store/background-connection';
 import {
   renderWithProvider,
   createSwapsMockStore,
-  setBackgroundConnection,
   fireEvent,
 } from '../../../../test/jest';
 import { CHAIN_IDS } from '../../../../shared/constants/network';
-import SmartTransactionStatus from '.';
+import SmartTransactionStatusLabel from '.';
 
 const middleware = [thunk];
 setBackgroundConnection({
@@ -39,10 +38,13 @@ jest.mock('../../../ducks/swaps/swaps', () => {
   };
 });
 
-describe('SmartTransactionStatus', () => {
+describe('SmartTransactionStatusLabel', () => {
   it('renders the component with initial props', () => {
     const store = configureMockStore(middleware)(createSwapsMockStore());
-    const { getByText } = renderWithProvider(<SmartTransactionStatus />, store);
+    const { getByText } = renderWithProvider(
+      <SmartTransactionStatusLabel />,
+      store,
+    );
     expect(getByText('Publicly submitting your Swap...')).toBeInTheDocument();
     expect(getByText('Close')).toBeInTheDocument();
   });
@@ -55,7 +57,10 @@ describe('SmartTransactionStatus', () => {
       ][1];
     latestSmartTransaction.status = 'success';
     const store = configureMockStore(middleware)(mockStore);
-    const { getByText } = renderWithProvider(<SmartTransactionStatus />, store);
+    const { getByText } = renderWithProvider(
+      <SmartTransactionStatusLabel />,
+      store,
+    );
     expect(getByText('Swap complete!')).toBeInTheDocument();
     expect(getByText('Your USDC is now available.')).toBeInTheDocument();
     expect(getByText('Create a new swap')).toBeInTheDocument();
@@ -70,7 +75,10 @@ describe('SmartTransactionStatus', () => {
       ][1];
     latestSmartTransaction.status = 'reverted';
     const store = configureMockStore(middleware)(mockStore);
-    const { getByText } = renderWithProvider(<SmartTransactionStatus />, store);
+    const { getByText } = renderWithProvider(
+      <SmartTransactionStatusLabel />,
+      store,
+    );
     expect(getByText('Swap failed')).toBeInTheDocument();
     expect(getByText('customer support')).toBeInTheDocument();
     expect(getByText('Close')).toBeInTheDocument();
@@ -84,7 +92,10 @@ describe('SmartTransactionStatus', () => {
       ][1];
     latestSmartTransaction.status = 'cancelled_user_cancelled';
     const store = configureMockStore(middleware)(mockStore);
-    const { getByText } = renderWithProvider(<SmartTransactionStatus />, store);
+    const { getByText } = renderWithProvider(
+      <SmartTransactionStatusLabel />,
+      store,
+    );
     expect(getByText('Swap cancelled')).toBeInTheDocument();
     expect(
       getByText(
@@ -102,7 +113,10 @@ describe('SmartTransactionStatus', () => {
       ][1];
     latestSmartTransaction.status = 'deadline_missed';
     const store = configureMockStore(middleware)(mockStore);
-    const { getByText } = renderWithProvider(<SmartTransactionStatus />, store);
+    const { getByText } = renderWithProvider(
+      <SmartTransactionStatusLabel />,
+      store,
+    );
     expect(getByText('Swap would have failed')).toBeInTheDocument();
     expect(
       getByText(
@@ -120,7 +134,10 @@ describe('SmartTransactionStatus', () => {
       ][1];
     latestSmartTransaction.status = 'unknown';
     const store = configureMockStore(middleware)(mockStore);
-    const { getByText } = renderWithProvider(<SmartTransactionStatus />, store);
+    const { getByText } = renderWithProvider(
+      <SmartTransactionStatusLabel />,
+      store,
+    );
     expect(getByText('Status unknown')).toBeInTheDocument();
     expect(
       getByText(
@@ -132,9 +149,12 @@ describe('SmartTransactionStatus', () => {
 
   it('cancels a transaction', () => {
     const store = configureMockStore(middleware)(createSwapsMockStore());
-    const { getByText } = renderWithProvider(<SmartTransactionStatus />, store);
+    const { getByText } = renderWithProvider(
+      <SmartTransactionStatusLabel />,
+      store,
+    );
     expect(getByText('Publicly submitting your Swap...')).toBeInTheDocument();
-    const cancelLink = getByText('Cancel swap for ~0');
+    const cancelLink = getByText('Attempt to cancel swap for free');
     expect(cancelLink).toBeInTheDocument();
     fireEvent.click(cancelLink);
     expect(
@@ -145,7 +165,10 @@ describe('SmartTransactionStatus', () => {
 
   it('clicks on the Close button', () => {
     const store = configureMockStore(middleware)(createSwapsMockStore());
-    const { getByText } = renderWithProvider(<SmartTransactionStatus />, store);
+    const { getByText } = renderWithProvider(
+      <SmartTransactionStatusLabel />,
+      store,
+    );
     expect(getByText('Publicly submitting your Swap...')).toBeInTheDocument();
     const closeButton = getByText('Close');
     expect(closeButton).toBeInTheDocument();

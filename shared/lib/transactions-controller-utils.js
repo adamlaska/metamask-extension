@@ -1,25 +1,22 @@
 import BigNumber from 'bignumber.js';
-import { TRANSACTION_ENVELOPE_TYPES } from '../constants/transaction';
-import {
-  conversionUtil,
-  multiplyCurrencies,
-  subtractCurrencies,
-} from '../modules/conversion.utils';
+import { TransactionEnvelopeType } from '@metamask/transaction-controller';
+
+import { EtherDenomination } from '../constants/common';
+import { Numeric } from '../modules/Numeric';
 import { isSwapsDefaultTokenSymbol } from '../modules/swaps.utils';
 
-const TOKEN_TRANSFER_LOG_TOPIC_HASH =
+export const TOKEN_TRANSFER_LOG_TOPIC_HASH =
   '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
 export const TRANSACTION_NO_CONTRACT_ERROR_KEY = 'transactionErrorNoContract';
 
+export const TRANSFER_SINFLE_LOG_TOPIC_HASH =
+  '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62';
+
 export const TEN_SECONDS_IN_MILLISECONDS = 10_000;
 
 export function calcGasTotal(gasLimit = '0', gasPrice = '0') {
-  return multiplyCurrencies(gasLimit, gasPrice, {
-    toNumericBase: 'hex',
-    multiplicandBase: 16,
-    multiplierBase: 16,
-  });
+  return new Numeric(gasLimit, 16).times(new Numeric(gasPrice, 16)).toString();
 }
 
 /**
@@ -37,23 +34,31 @@ export function toPrecisionWithoutTrailingZeros(n, precision) {
     .replace(/(\.[0-9]*[1-9])0*|(\.0*)/u, '$1');
 }
 
+/**
+ * @param {number|string|BigNumber} value
+ * @param {number=} decimals
+ * @returns {BigNumber}
+ */
 export function calcTokenAmount(value, decimals) {
-  const multiplier = Math.pow(10, Number(decimals || 0));
-  return new BigNumber(String(value)).div(multiplier);
+  const divisor = new BigNumber(10).pow(decimals ?? 0);
+  return new BigNumber(String(value)).div(divisor);
 }
 
 export function getSwapsTokensReceivedFromTxMeta(
   tokenSymbol,
   txMeta,
   tokenAddress,
-  accountAddress,
+  senderAddress,
   tokenDecimals,
   approvalTxMeta,
   chainId,
+  precision = 6,
 ) {
+  const accountAddress = txMeta?.swapAndSendRecipient ?? senderAddress;
+
   const txReceipt = txMeta?.txReceipt;
   const networkAndAccountSupports1559 =
-    txMeta?.txReceipt?.type === TRANSACTION_ENVELOPE_TYPES.FEE_MARKET;
+    txMeta?.txReceipt?.type === TransactionEnvelopeType.feeMarket;
   if (isSwapsDefaultTokenSymbol(tokenSymbol, chainId)) {
     if (
       !txReceipt ||
@@ -70,13 +75,16 @@ export function getSwapsTokensReceivedFromTxMeta(
       return txMeta.swapMetaData.token_to_amount;
     }
 
-    let approvalTxGasCost = '0x0';
+    let approvalTxGasCost = new Numeric('0x0', 16);
     if (approvalTxMeta && approvalTxMeta.txReceipt) {
-      approvalTxGasCost = calcGasTotal(
-        approvalTxMeta.txReceipt.gasUsed,
-        networkAndAccountSupports1559
-          ? approvalTxMeta.txReceipt.effectiveGasPrice // Base fee + priority fee.
-          : approvalTxMeta.txParams.gasPrice,
+      approvalTxGasCost = new Numeric(
+        calcGasTotal(
+          approvalTxMeta.txReceipt.gasUsed,
+          networkAndAccountSupports1559
+            ? approvalTxMeta.txReceipt.effectiveGasPrice // Base fee + priority fee.
+            : approvalTxMeta.txParams.gasPrice,
+        ),
+        16,
       );
     }
 
@@ -86,33 +94,24 @@ export function getSwapsTokensReceivedFromTxMeta(
         ? txReceipt.effectiveGasPrice
         : txMeta.txParams.gasPrice,
     );
-    const totalGasCost = new BigNumber(gasCost, 16)
-      .plus(approvalTxGasCost, 16)
-      .toString(16);
+    const totalGasCost = new Numeric(gasCost, 16).add(approvalTxGasCost);
 
-    const preTxBalanceLessGasCost = subtractCurrencies(
-      txMeta.preTxBalance,
+    const preTxBalanceLessGasCost = new Numeric(txMeta.preTxBalance, 16).minus(
       totalGasCost,
-      {
-        aBase: 16,
-        bBase: 16,
-        toNumericBase: 'hex',
-      },
     );
 
-    const ethReceived = subtractCurrencies(
+    const ethReceived = new Numeric(
       txMeta.postTxBalance,
-      preTxBalanceLessGasCost,
-      {
-        aBase: 16,
-        bBase: 16,
-        fromDenomination: 'WEI',
-        toDenomination: 'ETH',
-        toNumericBase: 'dec',
-        numberOfDecimals: 6,
-      },
-    );
-    return ethReceived;
+      16,
+      EtherDenomination.WEI,
+    )
+      .minus(preTxBalanceLessGasCost)
+      .toDenomination(EtherDenomination.ETH)
+      .toBase(10);
+
+    return (
+      precision === null ? ethReceived : ethReceived.round(precision)
+    ).toFixed();
   }
   const txReceiptLogs = txReceipt?.logs;
   if (txReceiptLogs && txReceipt?.status !== '0x0') {
@@ -124,19 +123,21 @@ export function getSwapsTokensReceivedFromTxMeta(
       const isTransferFromGivenAddress =
         txReceiptLog.topics &&
         txReceiptLog.topics[2] &&
-        txReceiptLog.topics[2].match(accountAddress.slice(2));
+        txReceiptLog.topics[2].match(accountAddress?.slice(2));
       return (
         isTokenTransfer &&
         isTransferFromGivenToken &&
         isTransferFromGivenAddress
       );
     });
-    return tokenTransferLog
-      ? toPrecisionWithoutTrailingZeros(
-          calcTokenAmount(tokenTransferLog.data, tokenDecimals).toString(10),
-          6,
-        )
-      : '';
+
+    if (tokenTransferLog) {
+      const tokenAmount = calcTokenAmount(tokenTransferLog.data, tokenDecimals);
+      return precision === null
+        ? tokenAmount.toFixed()
+        : toPrecisionWithoutTrailingZeros(tokenAmount, precision);
+    }
+    return '';
   }
   return null;
 }
@@ -145,28 +146,3 @@ export const TRANSACTION_ENVELOPE_TYPE_NAMES = {
   FEE_MARKET: 'fee-market',
   LEGACY: 'legacy',
 };
-
-export function hexWEIToDecGWEI(decGWEI) {
-  return conversionUtil(decGWEI, {
-    fromNumericBase: 'hex',
-    toNumericBase: 'dec',
-    fromDenomination: 'WEI',
-    toDenomination: 'GWEI',
-  });
-}
-
-export function decimalToHex(decimal) {
-  return conversionUtil(decimal, {
-    fromNumericBase: 'dec',
-    toNumericBase: 'hex',
-  });
-}
-
-export function hexWEIToDecETH(hexWEI) {
-  return conversionUtil(hexWEI, {
-    fromNumericBase: 'hex',
-    toNumericBase: 'dec',
-    fromDenomination: 'WEI',
-    toDenomination: 'ETH',
-  });
-}
